@@ -3,6 +3,7 @@
 using namespace std;
 ofstream Out1("Band1Rx.txt");
 
+
 int main(){
 
     Setup();
@@ -28,13 +29,14 @@ void writeout(){ //RxBuffer being written to file
     for (auto it = Output.begin();it!=Output.end();it++){
         Out1<<*it<<",";
                 }
+
 }
 
 void ChirpGen(){ //generate frequency sweep
 
     float d=0;
     float t=0;
-    float interval =  0.2*pow(10,-3);
+    float interval =  0.1*pow(10,-3);
     float chirp_size = 2000;
     ofstream Out3("chirp.txt");
     for(int i = 0;i<chirp_size;i++){
@@ -43,16 +45,16 @@ void ChirpGen(){ //generate frequency sweep
 
          buffertx[2*i]=cos(2*PI*t*(+((dF)/2)-(0.5*dF*t/(interval))));
          buffertx[2*i+1]=-sin(2*PI*t*(+(dF/2)-(0.5*dF*t/(interval))));
-         bufferlo[2*i]=0.5;
-         bufferlo[2*i+1]=0.5;
+         bufferlo[2*i]=1;
+         bufferlo[2*i+1]=1;
          Out3 << buffertx[2*i]<< ","<<buffertx[2*i+1]<<",";
 
         }
     for(int j = chirp_size;j<chirp_size+deadsamp;j++){
              buffertx[2*j]=0;
              buffertx[2*j+1]=0;
-             bufferlo[2*j]=0.5;
-             bufferlo[2*j+1]=0.5;}
+             bufferlo[2*j]=1;
+             bufferlo[2*j+1]=1;}
 
     Out3.close();
 
@@ -98,7 +100,6 @@ void Setup(){
         if (LMS_EnableChannel(device, LMS_CH_RX, 0, true) != 0)
             error();
 
-
         //Enable TX channels
         if (LMS_EnableChannel(device, LMS_CH_TX, 1, true) != 0)
             error();
@@ -108,29 +109,26 @@ void Setup(){
             error();
 
         //Set RX center frequency
-        if (LMS_SetLOFrequency(device, LMS_CH_RX, 0, 10.0e6) != 0)
+        if (LMS_SetLOFrequency(device, LMS_CH_RX, 0, 2.4e9) != 0)
             error();
 
 
         //Set TX center frequency
-        if (LMS_SetLOFrequency(device, LMS_CH_TX, 1, 500e6) != 0)
+        if (LMS_SetLOFrequency(device, LMS_CH_TX, 1, 2.4e9) != 0)
             error();
-        if (LMS_SetLOFrequency(device, LMS_CH_TX, 0, 10.0e6) != 0)
-            error();
-
-        if (LMS_SetSampleRateDir(device,LMS_CH_TX,Fs,0)!=0)
+        if (LMS_SetLOFrequency(device, LMS_CH_TX, 0, 2.4e9) != 0)
             error();
 
-        if (LMS_SetSampleRateDir(device,LMS_CH_RX,300e3,0)!=0)
+        if (LMS_SetSampleRate(device,Fs,0)!=0)
             error();
 
-        if (LMS_SetGaindB(device, LMS_CH_RX, 0, 50) != 0)
+        if (LMS_SetGaindB(device, LMS_CH_RX, 0, 26) != 0)
             error();
 
     //Set TX gain
-        if (LMS_SetGaindB(device, LMS_CH_TX, 1, 73) != 0)
+        if (LMS_SetGaindB(device, LMS_CH_TX, 1, 70) != 0)
             error();
-        if (LMS_SetGaindB(device, LMS_CH_TX, 0, 56) != 0)
+        if (LMS_SetGaindB(device, LMS_CH_TX, 0, 60) != 0)
             error();
     }
 }
@@ -160,7 +158,7 @@ int Stream(){
             lo_streams.fifoSize = (chirp_size +deadsamp)*2; //fifo size in samples
             lo_streams.throughputVsLatency = 1; //some middle ground
             lo_streams.isTx = true; //TX channel
-            lo_streams.dataFmt = lms_stream_t::LMS_FMT_F32;
+            lo_streams.dataFmt = lms_stream_t::LMS_FMT_I16;
             if (LMS_SetupStream(device, &lo_streams) != 0)
                 error();
 
@@ -199,18 +197,16 @@ int Stream(){
 
 
     int k = 0;
-
+    thread th1(osc);
+    th1.detach();
     while (k<10000) { //run for 30 seconds
         LMS_RecvStream(&rx_streams[0], bufferrx[0],(chirp_size +deadsamp),&rx_metadata,1000);
         tx_metadata.timestamp = rx_metadata.timestamp+1024*150;
-        if( k<126)
+        if( k<1000)
             writebuff();
-       // thread th1(writebuff);
+              
         LMS_SendStream(&tx_streams, buffertx, (chirp_size +deadsamp),&tx_metadata,1000);
-        LMS_SendStream(&lo_streams, bufferlo, (chirp_size +deadsamp),NULL,1000);
-
         k++;
-       // th1.join();
         }
     oscil = false;
 

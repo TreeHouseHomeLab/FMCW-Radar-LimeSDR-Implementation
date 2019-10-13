@@ -8,13 +8,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <thread>
 lms_device_t* device;
 
 
-const float interval = 0.2*pow(10,-3);
-const float Fe = 10e6;
+const float interval = 0.1*pow(10,-3);
+const float Fe = 20e6;
 const float Fst =  0;
-const float Fs = 10e6;
+const float Fs = 20e6;
 const int chirp_size = 2000;
 const float dF = Fe-Fst;
 int deadsamp = 200;
@@ -41,3 +42,6 @@ int Stream();
 int error();
 void writeout();
 void osc();
+
+
+
